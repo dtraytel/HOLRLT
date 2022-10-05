@@ -1,0 +1,10 @@
+chapter HOLRLT
+
+session Misc = HOLRLT +
+  sessions
+    "HOLRLT-Library"
+  theories
+    GFP
+	LFP
+	Group_Example
+	Counterexample
