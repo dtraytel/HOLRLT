@@ -1,3 +1,8 @@
+text \<open>Theory taken from https://www.isa-afp.org/entries/BNF_Operations.html
+
+The new contribution of this artifact starts at line 1408
+("Datatypes are wide with their standard relators!")\<close>
+
 (*  Title:       LFP
     Authors:     Jasmin Blanchette, Andrei Popescu, Dmitriy Traytel
     Maintainer:  Dmitriy Traytel <traytel at inf.ethz.ch>
