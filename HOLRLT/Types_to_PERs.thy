@@ -130,7 +130,7 @@ definition restr :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> ('a 
   "restr R P x y = (R x y \<and> P x \<and> P y)"
 
 lemma per_restr: "per R \<Longrightarrow> per (restr R A)"
-  by (smt (verit, best) per_def restr_def)
+  unfolding per_def restr_def by blast
 
 lemma restr_eq: "restr (=) = eq_onp"
   unfolding restr_def eq_onp_def by auto
@@ -247,13 +247,26 @@ lemma getReprOn_eq[simp]: "a \<in> A \<Longrightarrow> getReprOn A (=) a = a"
 
 lemma neper_getReprOn_eq: 
 "neper R \<Longrightarrow> a \<in> A \<Longrightarrow> b \<in> A \<Longrightarrow> R a b \<Longrightarrow> getReprOn A R a = getReprOn A R b"
-unfolding getReprOn_def  
-	by (smt (verit, best) Eps_cong neper_per per_def)
+  unfolding getReprOn_def using neper_classes_eq[of R a b]
+  by (auto intro!: Eps_cong)
+
+lemma neper_getReprOn_eq_strong: 
+"neper R \<Longrightarrow> R a b \<Longrightarrow> getReprOn A R a = getReprOn A R b"
+  unfolding getReprOn_def using neper_classes_eq[of R] neper_getRepr_eq[of R]
+  by (intro if_cong Eps_cong) fastforce+
+
+lemma neper_trans: "neper R \<Longrightarrow> R a b \<Longrightarrow> R b c \<Longrightarrow> R a c"
+  unfolding neper_def per_def by blast
+
+lemma neper_sym: "neper R \<Longrightarrow> R a b \<Longrightarrow> R b a"
+  unfolding neper_def per_def by blast
 
 lemma getReprOn_inject: 
 "neper R \<Longrightarrow> a' \<in> A \<Longrightarrow> b' \<in> A \<Longrightarrow> R a a' \<Longrightarrow> R b b' \<Longrightarrow> 
  R (getReprOn A R a) (getReprOn A R b) \<Longrightarrow> getReprOn A R a = getReprOn A R b"
-by (smt (verit, ccfv_SIG) CollectD CollectI Eps_cong getReprOn getReprOn_def neper_classes_eq)
+  using neper_classes_eq[of R a b, OF _ neper_trans[of R, OF _ getReprOn[of R _ a' A] neper_sym[of R,
+    OF _ neper_trans[of R, OF _ getReprOn[of R _ b' A] neper_sym[of R]]]]]
+  by (auto simp: getReprOn_def intro: Eps_cong)
 
 lemma geterReprOn_related: 
 "neper R \<Longrightarrow> a' \<in> A \<Longrightarrow> R a a' \<Longrightarrow> R (getReprOn A R a) a"
@@ -263,9 +276,9 @@ lemma getReprOn_UNIV: "neper R \<Longrightarrow> getReprOn UNIV R = getRepr R"
 unfolding getReprOn_def getRepr_def by auto
 
 lemma rel_fun_getReprOn_eq: 
-"neper R \<Longrightarrow> rel_fun R (=) (f \<circ> getReprOn A R) (f \<circ> getReprOn A R)"
-unfolding rel_fun_def apply (simp add: neper_getRepr_eq)  
-	by (smt (verit, ccfv_SIG) Eps_cong getReprOn_def mem_Collect_eq neper_classes_eq neper_getRepr_eq)
+  assumes "neper R"
+  shows "rel_fun R (=) (f \<circ> getReprOn A R) (f \<circ> getReprOn A R)"
+  by (auto simp: rel_fun_def dest: neper_getReprOn_eq_strong[OF assms, of _ _ A])
 
 (* *)
 
@@ -299,9 +312,6 @@ lemma closure_idem_Un[simp]:
 "neper R \<Longrightarrow> closure R (closure R {a} \<union> closure R A) = closure R {a} \<union> closure R A"
 by (simp add: closure_Un)
 
-lemma closed_closure[simp]: "neper R \<Longrightarrow> rel_set R A A \<Longrightarrow> closed R (closure R A)"
-by (smt (verit, best) closed_def closure_def closure_idem mem_Collect_eq)
-
 lemma rel_set_closure: "rel_set R A A \<Longrightarrow> rel_set R A (closure R A)"
 unfolding rel_set_def closure_def by blast
 
@@ -312,7 +322,10 @@ by simp (metis neper_def per_def)
 lemma rel_set_closure_iff[simp]: 
 "neper R \<Longrightarrow> rel_set R A A \<Longrightarrow> rel_set R B B \<Longrightarrow> 
  rel_set R (closure R A) (closure R B) \<longleftrightarrow> rel_set R A B"
-by (metis neper_per per_def per_rel_set rel_set_closure)
+  by (metis neper_per per_def per_rel_set rel_set_closure)
+
+lemma closed_closure[simp]: "neper R \<Longrightarrow> rel_set R A A \<Longrightarrow> closed R (closure R A)"
+  by (auto simp: closed_iff_eq_closure)
 
 lemma rel_set_getRepr_closure: 
 "neper R \<Longrightarrow> rel_set R A A \<Longrightarrow> {getRepr R a |a. a \<in> closure R A} = {getRepr R a |a. a \<in> A}"
@@ -335,23 +348,22 @@ unfolding closure_def apply auto
 
 lemma rel_set_closure_iff': 
 "neper R \<Longrightarrow> R a a \<Longrightarrow> R b b \<Longrightarrow> rel_set R (closure R {a}) (closure R {b}) \<longleftrightarrow> R a b"
-unfolding closure_def apply auto  
-  apply (metis (full_types) CollectD CollectI neper_classes_eq rel_setD1)
-  by (smt (verit, best) CollectD CollectI neper_per per_def rel_setI) 
+unfolding closure_def by (auto simp: rel_set_def dest: neper_sym neper_trans)
 
 lemma rel_set_closure_rel_conj: 
 assumes Q: "neper (rel_conj R Q)" and R: "neper R" and r: "rel_conj R Q a a" "rel_conj R Q b b"
 and rc: "rel_set R (closure (rel_conj R Q) {a}) (closure (rel_conj R Q) {b})"
 shows "rel_conj R Q a b"
 using assms 
-unfolding closure_def rel_set_def OO_def apply auto  
-	by (smt (verit) mem_Collect_eq neper_classes_eq) 
+  unfolding closure_def rel_set_def OO_def apply (auto)
+  by (meson neper_trans)
 
 lemma closure_relcompp2: 
 "neper Q \<Longrightarrow> neper (restr R (\<lambda>i. Q i i)) \<Longrightarrow> closure (rel_conj Q R) (closure Q A) = closure (Q OO R OO Q) A"
-unfolding closure_def restr_def apply auto  
-	apply (smt (verit, ccfv_threshold) OO_def neper_def per_def) 
-	using neper_classes_eq by fastforce 
+  unfolding closure_def restr_def apply auto  
+  using neper_trans apply fastforce
+	using neper_classes_eq apply fastforce
+  done
 
 lemma closure_singl: "neper R \<Longrightarrow> closure R {xa} = {x. R x xa}"
 unfolding closure_def 
@@ -385,8 +397,9 @@ and cv: "\<And>R. G (conversep R) = conversep (G R)"
 and ne: "\<exists>x. G R x x"
 and R: "neper R"
 shows "neper (G R)"
-by (smt (verit) R ne cm conversep_iff cv neper_conversep neper_def 
-neper_relcompp_leq per_def relcomppI) 
+  using cm[of R R] cv[of R] ne R neper_relcompp_leq[OF R]
+  unfolding neper_def per_def conversep_iff relcompp_apply
+  by (metis (full_types) R conversep_iff cv neper_conversep)
 
 
 (* BIJECTIONS UP-TO *)
@@ -466,10 +479,18 @@ using assms unfolding bij_upto_def restr_def
 lemma bij_upto_inv_imagep:
 assumes "{x. R x x} \<subseteq> range Rep" and "bij_upto R Q f" 
 shows "bij_upto (inv_imagep R Rep) Q (f o Rep)"
-using assms unfolding bij_upto_def inv_imagep_def image_def apply safe
+  using assms unfolding bij_upto_def inv_imagep_def image_def apply safe
   subgoal by (metis comp_eq_dest_lhs)
   subgoal by (metis comp_eq_dest_lhs)
-  subgoal by (smt (z3) comp_apply mem_Collect_eq rangeE subset_iff)
+  subgoal for y
+    apply (drule spec[of _ y])
+    apply (drule iffD1, assumption)
+    apply (erule exE conjE)+
+    apply (drule subsetD)
+     apply (erule CollectI)
+    apply (erule CollectE bexE)+
+    apply hypsubst_thin
+    by (metis comp_eq_dest_lhs)
   subgoal by (metis comp_eq_dest_lhs) .
 
 lemma bij_upto_restr_inv_imagep_inj:
@@ -562,8 +583,8 @@ proof-
   	by (auto simp add: b g_def inv_upto)
   show ?thesis 
   apply(rule bij_uptoI[OF R1])
-    subgoal using b unfolding bij_upto_def 
-    	by (smt (verit, best) Collect_mono_iff R2 g(1) g(2) neper_classes_eq) 
+    subgoal for x y using b unfolding bij_upto_def
+      by (metis (full_types) CollectD CollectI R2 g(1) g(2) neper_classes_eq)
      subgoal using b unfolding bij_upto_def 
      	 by (metis (full_types) R2 g(2) mem_Collect_eq neper_classes_eq)
      subgoal using b unfolding bij_upto_def 
@@ -578,8 +599,8 @@ lemma inv_upto_eq_inv: "bij f \<longrightarrow> inv_upto (=) (=) f = inv f"
 
 lemma inv_upto_iff_bij_betw: 
 "bij_betw f A B \<Longrightarrow> inv_upto (perOfSet A) (perOfSet B) f = inv_into A f"
-unfolding bij_betw_def inj_on_def perOfSet_def inv_upto_def fun_eq_iff apply auto  
-	by (smt (verit, best) Eps_cong image_eqI inv_into_def)
+  unfolding bij_betw_def inj_on_def perOfSet_def inv_upto_def inv_into_def fun_eq_iff
+  by auto (metis image_eqI)
 
 lemma inv_upto_eqI: 
 assumes R: "R1 = perOfSet A" "R2 = perOfSet A"
@@ -612,7 +633,8 @@ the characteristic theorem: *)
 thm someI[no_vars]
 
 lemma someI_rlt: "rel_fun R (=) P P \<Longrightarrow> R x x \<Longrightarrow> P x \<Longrightarrow> P (Eps_rlt R P)"
-unfolding Eps_rlt_def rel_fun_def by (smt (verit, ccfv_threshold) tfl_some)
+  unfolding Eps_rlt_def rel_fun_def
+  by (subst if_P) (blast | rule someI2_ex)+
 
 (* 2. NEPER-parametricity: *)
 
@@ -620,7 +642,11 @@ lemma neper_param_Eps_rlt:
   assumes "neper R"
   shows "rel_fun (rel_fun R (=)) R (Eps_rlt R) (Eps_rlt R)"
   unfolding rel_fun_def Eps_rlt_def apply auto
-   apply (smt (verit, ccfv_threshold) Eps_cong tfl_some)
+  subgoal for f x g y
+    apply (subgoal_tac "(SOME x. R x x \<and> f x) = (SOME x. R x x \<and> g x)")
+     apply (metis (no_types, lifting) tfl_some)
+    apply (rule Eps_cong; blast)
+    done
   by (metis (mono_tags, lifting) assms neper_def someI_ex)
 
 (* 3. Recoverability: *)
@@ -653,16 +679,28 @@ thm theI[no_vars]
 
 lemma "neper R \<Longrightarrow> rel_fun R (=) P P \<Longrightarrow> R x x \<Longrightarrow> 
  P x \<Longrightarrow> (\<And>y. P y \<Longrightarrow> R y x) \<Longrightarrow> P (The_rlt R P)"
-unfolding The_rlt_def rel_fun_def  
-	by (smt (verit, ccfv_threshold) exE_some neper_per per_def)
+  unfolding The_rlt_def rel_fun_def
+  apply (subst if_P)
+   apply (metis neper_sym neper_trans)
+  apply (rule someI2_ex)
+   apply blast
+  apply blast
+  done
 
 thm theI_unique[no_vars]
 
-lemma "neper R \<Longrightarrow> rel_fun R (=) P P \<Longrightarrow> R x x \<Longrightarrow> 
+lemma "neper R \<Longrightarrow> rel_fun R (=) P P \<Longrightarrow> R x x \<Longrightarrow>
  (\<And>y. P y \<Longrightarrow> R y x) \<Longrightarrow> P x \<longleftrightarrow> P (The_rlt R P)"
-unfolding The_rlt_def rel_fun_def 
-by (smt (verit) neper_def per_def someI_ex)
-	 
+  unfolding The_rlt_def rel_fun_def
+  apply (rule iffI)
+   apply (subst if_P)
+    apply (metis neper_sym neper_trans)
+   apply (rule someI2_ex)
+    apply blast
+   apply blast
+  apply blast
+  done
+	          
 (* Parametricity: *)
 lemma neper_param_The_rlt: 
   assumes "neper (R::'a rel)"
@@ -673,10 +711,13 @@ unfolding rel_fun_def proof safe
   proof(cases "(\<exists>x. R x x \<and> p x) \<and> 
                (\<forall>x y. R x x \<and> R y y \<and> p x \<and> p y \<longrightarrow> R x y)")
     case True
-    have "R (SOME x. R x x \<and> p x) (SOME x. R x x \<and> q x)"  
-    	by (smt (verit, best) "0" Eps_cong True someI_ex)
+    have *: "(SOME x. R x x \<and> p x) = (SOME x. R x x \<and> q x)"
+      by (rule Eps_cong) (auto simp: 0)
+    have "R (SOME x. R x x \<and> p x) (SOME x. R x x \<and> q x)"
+      unfolding *[symmetric] by (rule someI2_ex) (use True in \<open>blast\<close>)+
     thus ?thesis 
-    using True unfolding The_rlt_def by (smt (verit, best) 0)
+      using True unfolding The_rlt_def if_P[OF True] using 0
+      by (subst if_P) blast
   next
     case False note f = False
     show ?thesis 
@@ -687,8 +728,8 @@ unfolding rel_fun_def proof safe
       case False 
       have "R (SOME x. R x x) (SOME x. R x x)"
       by (meson assms neper_def some_eq_imp)
-      thus ?thesis using f unfolding The_rlt_def  
-      	by (smt (verit, best) "0" False)
+    thus ?thesis unfolding The_rlt_def if_not_P[OF f] if_not_P[OF False] 
+      using 0 f by (subst if_not_P) blast
     qed
   qed
 qed
@@ -791,11 +832,10 @@ lemma Ex_rlt_simp[simp]:
     neper_def per_def All_rlt_def by metis
 
 lemma and_rlt_simp[simp]: "and_rlt P Q = (P \<and> Q)" 
-  by (smt (z3) All_rlt_def rlt_eq and_rlt_def rel_fun_def)
+  unfolding rlt_eq ..
 
-lemma or_rlt_simp[simp]: "or_rlt P Q = (P \<or> Q)" 
-  by (smt (z3) All_rlt_def rlt_eq 
-      or_rlt_def rel_fun_eq_rel)
+lemma or_rlt_simp[simp]: "or_rlt P Q = (P \<or> Q)"
+  unfolding rlt_eq ..
 
 lemma not_rlt_simp[simp]: "not_rlt P = (\<not> P)" 
   by (simp only: not_rlt_def rlt_eq simp_thms)
@@ -822,8 +862,17 @@ lemma prod_tprod: "Product_Type.prod = Collect tprod"
 
 wide_typedef prod rel: "rel_prod" rep: "\<lambda>R1 R2 (a,b). Pair_Rep_rlt R1 R2 a b"
   via type_definition_prod[unfolded prod_tprod]
-  subgoal unfolding neper_def per_def
-  	by (smt (z3) rel_prod_inject rel_prod_sel)
+  subgoal for R1 R2 unfolding neper_def per_def
+    apply safe
+    subgoal premises prems
+      using prems(7)
+      by (simp add: prems(3,5)[rule_format])
+    subgoal premises prems
+      using prems(7,8)
+      by (auto intro: prems(4,6)[rule_format, OF conjI])
+    subgoal premises prems for a b
+      using prems(1,2) by (auto intro: exI[of _ "(a, b)"])
+    done
   subgoal unfolding neper_def per_def  
   	by (simp add: prod.rel_eq)
   subgoal for R1 R2
@@ -831,8 +880,23 @@ wide_typedef prod rel: "rel_prod" rep: "\<lambda>R1 R2 (a,b). Pair_Rep_rlt R1 R2
     apply safe
     subgoal for a b aa bb 
       unfolding rel_fun_def rel_prod.simps Pair_Rep_rlt_def 
-        tprod_rlt_def restr_def[abs_def] 
-      by auto (metis neper_def per_def | smt (verit, ccfv_threshold))+ 
+        tprod_rlt_def restr_def[abs_def]
+      apply auto
+           apply (metis neper_def per_def)
+          apply (metis neper_def per_def)
+         apply (metis neper_def per_def)
+        apply (metis neper_def per_def)
+       apply (rule exI[of _ a], rule conjI)
+        apply (metis neper_def per_def)
+       apply (rule exI[of _ b], rule conjI)
+        apply (metis neper_def per_def)
+       apply (metis neper_def per_def)
+      apply (rule exI[of _ a], rule conjI)
+       apply (metis neper_def per_def)
+      apply (rule exI[of _ b], rule conjI)
+       apply (metis neper_def per_def)
+      apply (metis neper_def per_def)
+      done
     subgoal for a b aa bb 
       unfolding rel_fun_def rel_prod.simps Pair_Rep_rlt_def 
         tprod_rlt_def restr_def[abs_def] by auto
@@ -841,8 +905,8 @@ wide_typedef prod rel: "rel_prod" rep: "\<lambda>R1 R2 (a,b). Pair_Rep_rlt R1 R2
         tprod_rlt_def restr_def[abs_def] Ex_rlt_simp 
       apply auto unfolding neper_def per_def apply safe 
       subgoal for x xx a aa
-        apply(rule exI[of _ x]) apply safe apply(rule exI[of _ xx])   
-        by (smt (verit)) .
+        apply(rule exI[of _ x]) apply safe apply(rule exI[of _ xx])
+        by meson .
     subgoal 
       unfolding rel_fun_def rel_prod.simps Pair_Rep_rlt_def 
         tprod_rlt_def restr_def[abs_def] Ex_rlt_simp and_rlt_simp
@@ -873,8 +937,17 @@ local_setup \<open> RLCST @{term Inr_Rep} \<close>
 wide_typedef sum rel: "rel_sum" rep: "\<lambda>R1 R2 a_b. case a_b of Inl a \<Rightarrow> Inl_Rep_rlt R1 R2 a 
                                         |Inr b \<Rightarrow> Inr_Rep_rlt R2 R1 b"
   via type_definition_sum[unfolded sum_tsum]
-  subgoal unfolding neper_def per_def 
-  	by (smt (verit, best) rel_sum.intros(2) rel_sum_sel)
+  subgoal for R1 R2 unfolding neper_def per_def
+    apply safe
+    subgoal premises prems for a b c d
+      using prems(7)
+      by (cases c; cases d; simp add: prems(3,5)[rule_format])
+    subgoal premises prems for a b c d e
+      using prems(7,8)
+      by (cases c; cases d; cases e; auto intro: prems(4,6)[rule_format, OF conjI])
+    subgoal premises prems for a b
+      using prems(1) by (auto intro: exI[of _ "Inl a"])
+    done
   subgoal unfolding neper_def per_def  
     using sum.rel_eq by blast
   subgoal for R1 R2 unfolding bij_upto_def
