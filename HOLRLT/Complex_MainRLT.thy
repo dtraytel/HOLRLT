@@ -49,8 +49,11 @@ lemma neper_rel_filter:
 apply (simp add: neper_def per_def)
 apply safe
 apply (metis rel_filter_conversep symp_conv_conversep_eq symp_def)
-using rel_filter_distr[of R R]
-apply (smt (verit) pick_middlep predicate2I rel_filter_mono relcomppI relcompp_mono rev_predicate2D)
+   apply (rule rel_filter_mono[THEN predicate2D])
+    apply (rule transp_relcompp_less_eq)
+    apply (metis transpI)
+   apply (rule rel_filter_distr[of R R, THEN predicate2_eqD, THEN iffD1])
+  apply (erule (1) relcomppI)
 using bot_filter_parametric by blast
 
 (* More palatable definition of rel_filter: *)
@@ -73,24 +76,39 @@ assumes H: "is_filter H" and HR: "H (\<lambda>(x, y). R x y)"
 shows "is_filter (\<lambda>p. H (\<lambda>(x,y). p x \<and> R x y))"
 unfolding is_filter_def apply safe
   subgoal using assms unfolding is_filter_def by auto
-  subgoal for P Q using
+  subgoal premises prems for P Q using
     H[unfolded is_filter_def, THEN conjunct2, THEN conjunct1, rule_format,
         of "\<lambda>(x, y). P x \<and> R x y" "\<lambda>(x, y). Q x \<and> R x y"]
-  by (smt (verit, best) H case_prod_unfold is_filter.mono)
+    apply (rule is_filter.mono[OF H, rotated])
+    apply (rule prems)
+    apply (rule prems)
+    apply auto
+    done
   subgoal for P Q
-  by (smt (verit) H case_prod_unfold is_filter.mono) .
+    apply (rule is_filter.mono[OF H, rotated])
+    apply auto
+    done
+  .
 
 lemma is_filter_conjR:
 assumes H: "is_filter H" and HR: "H (\<lambda>(x, y). R x y)"
 shows "is_filter (\<lambda>q. H (\<lambda>(x,y). q y \<and> R x y))"
 unfolding is_filter_def apply safe
   subgoal using assms unfolding is_filter_def by auto
-  subgoal for P Q using
+  subgoal premises prems for P Q using
     H[unfolded is_filter_def, THEN conjunct2, THEN conjunct1, rule_format,
         of "\<lambda>(x, y). P y \<and> R x y" "\<lambda>(x, y). Q y \<and> R x y"]
-  by (smt (verit, best) H case_prod_unfold is_filter.mono)
+
+    apply (rule is_filter.mono[OF H, rotated])
+    apply (rule prems)
+    apply (rule prems)
+    apply auto
+    done
   subgoal for P Q
-  by (smt (verit) H case_prod_unfold is_filter.mono) .
+    apply (rule is_filter.mono[OF H, rotated])
+    apply auto
+    done
+  .
 
 lemma Rep_filter_Abs_filter_conjL:
 assumes HR: "Rep_filter Z (\<lambda>(x, y). R x y)"
@@ -144,10 +162,11 @@ unfolding inj_on_def by auto
 
 lemma neper_inv_imagep2: 
 "neper (inv_imagep R f) \<Longrightarrow> inj f \<Longrightarrow> Collect t = range f \<Longrightarrow> neper (restr R t)"
-unfolding inv_imagep_def neper_def per_def inj_on_def apply safe
-  subgoal by (smt (verit, ccfv_threshold) image_iff mem_Collect_eq restr_def)
-  subgoal by (smt (verit, ccfv_threshold) image_iff mem_Collect_eq restr_def)
-  subgoal by (metis mem_Collect_eq rangeI restr_def) .
+  unfolding inv_imagep_def neper_def per_def inj_on_def restr_def set_eq_iff mem_Collect_eq image_iff apply safe
+  subgoal by metis
+  subgoal by (metis (full_types))
+  subgoal by blast
+  .
 
 lemma neper_restr_rrel_filter_is_filter: "neper R \<Longrightarrow> neper (restr (rrel_filter R) is_filter)"
 apply(frule neper_rel_filter) unfolding rel_filter_rrel_filter 

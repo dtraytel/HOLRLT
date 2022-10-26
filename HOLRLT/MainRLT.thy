@@ -157,8 +157,8 @@ next
   case (insert a A) 
   show ?case proof(cases "R a a")
     case False
-    thus ?thesis using insert(3)  
-    	by simp (smt (z3) Collect_cong)
+    thus ?thesis using insert(3)
+      by (auto elim!: arg_cong[of _ _ "finite_rlt R", THEN iffD1, rotated])
   next
     case True
     show ?thesis 
@@ -229,17 +229,22 @@ proof-
     have BA2: "B = {getRepr R a |a. a \<in> A2}"
     using insert(2,4) unfolding A2_def by auto
     have fA2: "finite_rlt R A2" using insert(3)[OF BA2 rA2 AA2] .
+    
+    have *: "\<exists>a. b = getRepr R a \<and> a \<in> A"
+      using \<open>insert b B = {getRepr R a |a. a \<in> A}\<close> by auto
 
-    have Rb: "R b b"  
-    by (smt (verit, best) R getRepr_neper insert.prems(1) 
-       insert.prems(2) insertI1 mem_Collect_eq neper_classes_eq rel_setD2)
+    then have Rb: "R b b"
+      by (metis mem_Collect_eq getRepr_neper[OF R]
+        rel_setD2[OF insert.prems(2)] mem_Collect_eq neper_classes_eq[OF R])
     have 0: "{a \<in> A. getRepr R a = b} = {x. R x b}"
     apply auto  
-   	 using R getRepr_neper insert.prems(2) neper_rel_set_iff apply fastforce
-     apply (smt (verit, del_insts) A1_def Ball_Collect R closed_def getRepr_neper insert.prems(1) 
-       insert.prems(3) insertI1 mem_Collect_eq neper_per neper_rel_set_iff per_def rA1)
-    by (smt (verit, del_insts) Ball_Collect R getRepr_neper insert.prems(1) insert.prems(2) 
-    insertCI mem_Collect_eq neper_getRepr_eq neper_rel_set_iff)
+      using R getRepr_neper insert.prems(2) neper_rel_set_iff apply fastforce
+      using insert.prems(3)[unfolded closed_def, rule_format] *
+       apply (metis (mono_tags, lifting) R getRepr_neper insert.prems(2) neper_per per_def rel_setD2)
+      using *
+      apply (metis (no_types, opaque_lifting) R getRepr_neper insert.prems(2) neper_getRepr_eq
+        neper_sym neper_trans rel_setD2)
+      done
     
     have fA1: "finite_rlt R A1" unfolding A1_def 
     using finite_rlt_singl[OF R Rb] unfolding 0 .
@@ -291,6 +296,9 @@ lemma finite_rlt_closure[simp]:
 using finite_rlt_neper_param  
 by (metis (mono_tags) rel_funE rel_set_closure)
 
+lemma neper_sym_eq: "neper R \<Longrightarrow> R a b = R b a"
+  by (metis neper_sym)
+
 lemma finite_rlt_induct_closure: 
 assumes R: "neper R" 
 and 1: "rel_fun (rel_set R) (=) \<phi> \<phi>" "rel_set R A A" "finite_rlt R A" 
@@ -302,8 +310,10 @@ shows "\<phi> A"
 apply(rule finite_rlt_induct[of R \<phi> A])  
 using R 1 \<phi> apply safe 
   subgoal for a A
-  using 2[of a A] unfolding closure_def Int_def Un_def  
-  by auto (smt (verit, ccfv_SIG) Collect_cong neper_per per_def) .
+    using 2[of a A] unfolding closure_def Int_def Un_def  
+    apply (auto simp: neper_sym_eq[of R])
+    using neper_classes_eq by fastforce
+  .
 
 
 (* Relativization of UNIV: *)
@@ -373,11 +383,12 @@ proof-
   let ?\<phi> = "\<lambda>A. card_rlt R A = card {getRepr R a | a. a \<in> A}"
   have 0: "rel_fun (rel_set R) (=) ?\<phi> ?\<phi>"
   unfolding rel_fun_def apply clarify
-  subgoal for A B apply(subst rel_set_getRepr[of R B A])  
-  	using R apply blast 
-  	apply (meson R neper_per per_def per_rel_set)  
-  	by (smt (verit, ccfv_threshold) R card_rlt_neper_param empty_iff empty_transfer 
-       mem_Collect_eq neper_def rel_fun_def rel_set_closure) .
+  subgoal premises prems for A B apply(subst rel_set_getRepr[of R B A])  
+  	using R apply blast
+  	 apply (meson R neper_per per_def per_rel_set prems)
+  	using card_rlt_neper_param[OF R, THEN rel_funD, OF prems]
+  	by simp
+  done
   show ?thesis 
   proof(induction rule: finite_rlt_induct_closure[OF R 0 A])
   	case 1
@@ -390,9 +401,11 @@ proof-
     apply auto
     apply (simp add: R closure_def neper_getRepr_eq)+
     using "2.IH"(1) by force
-    have gg: "getRepr R a \<notin> {getRepr R aa |aa. aa \<in> closure R A}"
-    by auto (smt (verit, best) "2.IH"(1) "2.IH"(4) CollectD Int_Collect assms(1) 
-     bex_empty closure_def geterRepr_related inf_sup_aci(1) insertI1 neper_classes_eq)
+  have gg: "getRepr R a \<notin> {getRepr R aa |aa. aa \<in> closure R A}"
+    using "2.IH"(1) "2.IH"(4)
+    apply (auto simp: closure_def set_eq_iff)
+    using  geterRepr_related[OF R] neper_classes_eq[OF R]
+    by (metis (no_types, lifting) CollectI CollectD)
 
     have "finite_rlt R (closure R A)" 
     	using "2.IH"(2) "2.IH"(3) R finite_rlt_closure by blast
