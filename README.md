@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/546259766.svg)](https://zenodo.org/badge/latestdoi/546259766)
+
 This is the artifact accompanying the paper:
 
 Admissible Types-To-PERs Relativization in Higher-Order Logic
