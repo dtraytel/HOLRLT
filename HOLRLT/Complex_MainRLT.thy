@@ -172,7 +172,7 @@ lemma neper_restr_rrel_filter_is_filter: "neper R \<Longrightarrow> neper (restr
 apply(frule neper_rel_filter) unfolding rel_filter_rrel_filter 
 apply(rule neper_inv_imagep2[where f = Rep_filter]) 
 by auto (metis Abs_filter_inverse' range_eqI)  
-   
+
 
 (* More elementary characterisation of rrel_filter *)
 
@@ -191,18 +191,18 @@ proof safe
   have 1: "H (\<lambda>(x, y). p x \<and> R x y)" "H (\<lambda>(x, y). q y \<and> R x y)" using Fp FH Gq GH by auto
   {assume 0: "\<forall>x y. p x \<and> R x y \<and> q y \<longrightarrow> p' x"   
    have "H (\<lambda>(x, y). p x \<and> R x y \<and> q y)" 
-   using is_filter.mono[OF H(1)] is_filter.conj[OF H(1), of "\<lambda>(x, y). p x \<and> R x y", OF 1]
-   by (smt (verit, best) prod.case_eq_if)
-   hence "H (\<lambda>(x, y). p' x \<and> R x y)" using is_filter.mono[OF H(1)] 
-   	 by (smt (verit, ccfv_threshold) 0 prod.case_eq_if)
+     using is_filter.conj[OF H(1), of "\<lambda>(x, y). p x \<and> R x y", OF 1]
+     by (auto elim!: is_filter.mono[OF H(1), rotated])
+  hence "H (\<lambda>(x, y). p' x \<and> R x y)"
+    using 0 by (auto elim!: is_filter.mono[OF H(1), rotated])
    with FH show "F p'" unfolding fun_eq_iff by auto
   }
   {assume 0: "\<forall>x y. p x \<and> R x y \<and> q y \<longrightarrow> q' y" 
    have "H (\<lambda>(x, y). p x \<and> R x y \<and> q y)" 
-   using is_filter.mono[OF H(1)] is_filter.conj[OF H(1), of "\<lambda>(x, y). p x \<and> R x y", OF 1]
-   by (smt (verit, best) prod.case_eq_if)
+   using is_filter.conj[OF H(1), of "\<lambda>(x, y). p x \<and> R x y", OF 1]
+     by (auto elim!: is_filter.mono[OF H(1), rotated])
    hence "H (\<lambda>(x, y). q' y \<and> R x y)" using is_filter.mono[OF H(1)] 
-   	 by (smt (verit, ccfv_threshold) 0 prod.case_eq_if)
+   	 using 0 by (auto elim!: is_filter.mono[OF H(1), rotated])
    with GH show "G q'" unfolding fun_eq_iff by auto
   }
 next
@@ -254,21 +254,25 @@ lemma rel_fun_ff:
  rel_fun (rel_fun R (=)) (=) (ff R F) (ff R G)"
 unfolding inv_imagep_def
 unfolding rrel_filter_def ff_def apply safe
-  subgoal for H unfolding rel_fun_def fun_eq_iff apply auto  
-  apply (smt (verit, best) case_prod_beta is_filter.mono)
-    by (smt (verit, ccfv_SIG) is_filter.mono neper_per per_def prod.case_eq_if) .
+  subgoal premises prems for H unfolding rel_fun_def fun_eq_iff using prems(1)
+    apply (auto elim!: is_filter.mono[rotated 2, of H] simp: prems(2))
+    apply (metis neper_sym)
+    .
+  done
 
 lemma is_filter_ff:
 "neper R \<Longrightarrow> is_filter F \<Longrightarrow> is_filter (ff R F)"
-unfolding is_filter_def[of "ff R F"] unfolding  ff_def apply (auto intro: is_filter.True)
-	apply (smt (verit, ccfv_SIG) eventually_Abs_filter eventually_elim2)
-  by (smt (verit, best) is_filter.mono neper_per per_def)
+  unfolding is_filter_def[of "ff R F"] unfolding  ff_def
+  by (auto intro: is_filter.True simp: eventually_Abs_filter[of F, symmetric]
+    elim: eventually_elim2 eventually_mono)
 
 lemma is_filter_rlt_ff:
 "neper R \<Longrightarrow> is_filter F \<Longrightarrow> is_filter_rlt R (ff R F)"
-unfolding is_filter_def[of "ff R F"] unfolding  ff_def apply (auto intro: is_filter.True)
-	apply (smt (verit, ccfv_SIG) eventually_Abs_filter eventually_elim2)
-  by (smt (verit, best) is_filter.mono neper_per per_def)
+  unfolding is_filter_def[of "ff R F"] unfolding  ff_def
+  apply (auto intro: is_filter.True simp: eventually_Abs_filter[of F, symmetric]
+    elim: eventually_elim2)
+  apply (erule eventually_mono)
+  by (metis neper_sym neper_trans)
 
 lemma rrel_filter_upwards: 
 assumes R: "neper R" and F: "is_filter F" and FF: "rrel_filter R F F" and 
@@ -286,34 +290,42 @@ shows "rrel_filter R F G"
 unfolding rrel_filter_def2[OF F G] proof safe
   fix p q p' assume Fp: "F p" and Gq: "G q" and 0: "\<forall>x y. p x \<and> R x y \<and> q y \<longrightarrow> p' x"
   have FF: "rel_fun (rel_fun R (=)) (=) (ff R F) (ff R F)"
-  by (smt (verit, best) FG R mem_Collect_eq neper_classes_eq neper_eq neper_rel_fun rel_fun_def)
+    using FG R rFF rel_fun_ff by blast
   have "G (\<lambda>x. \<exists>y. R x y \<and> q y)"
   apply(rule rGG[unfolded rrel_filter_def2[OF G G], 
    THEN conjunct1, rule_format, folded atomize_conjL, OF Gq Gq]) by auto
-  hence 1: "G (\<lambda>x. \<forall>x'. R x x' \<longrightarrow> (\<exists>y. R x' y \<and> q y))" 
-   by (smt (verit, best) G R is_filter.mono mem_Collect_eq neper_classes_eq)
+  hence 1: "G (\<lambda>x. \<forall>x'. R x x' \<longrightarrow> (\<exists>y. R x' y \<and> q y))"
+    by (rule is_filter.mono[OF G, rotated]) (metis R neper_sym_eq neper_trans)
   have "F (\<lambda>x. \<forall>x'. R x x' \<longrightarrow> (\<exists>y. R x' y \<and> q y))" using FG[unfolded rel_fun_def[of "rel_fun R (=)"] ff_def, 
      rule_format, of "\<lambda>x. \<exists>y. R x y \<and> q y" "\<lambda>x. \<exists>y. R x y \<and> q y"] 
   using 1 unfolding rel_fun_def by (metis R neper_def per_def)
-  hence 2: "F (\<lambda>x. \<exists>y. R x y \<and> q y)"  
-  by (smt (verit, best) F R rFF rrel_filter_upwards)
-  show "F p'" using 0 2 F by (smt (verit, best) Fp eventually_Abs_filter eventually_elim2)
+  hence 2: "F (\<lambda>x. \<exists>y. R x y \<and> q y)"
+    using F R rFF rrel_filter_upwards by fastforce
+  show "F p'" using 2 Fp
+    unfolding eventually_Abs_filter[OF F, symmetric, of p]
+              eventually_Abs_filter[OF F, symmetric, of p']
+              eventually_Abs_filter[OF F, symmetric, of "\<lambda>x. \<exists>y. R x y \<and> q y"]
+    by (rule eventually_elim2) (blast intro: 0[rule_format])
 next
   fix p q q' assume Fp: "F p" and Gq: "G q" and 0: "\<forall>x y. p x \<and> R x y \<and> q y \<longrightarrow> q' y"
   have GG: "rel_fun (rel_fun R (=)) (=) (ff R G) (ff R G)"
-  by (smt (verit, best) FG R mem_Collect_eq neper_classes_eq neper_eq neper_rel_fun rel_fun_def)
+    by (simp add: R rGG rel_fun_ff)
   have "F (\<lambda>y. \<exists>x. p x \<and> R x y)"
   apply(rule rFF[unfolded rrel_filter_def2[OF F F], 
    THEN conjunct1, rule_format, folded atomize_conjL, OF Fp Fp])  
     by (meson R neper_per per_def) 
-  hence 1: "F (\<lambda>y. \<forall>y'. R y y' \<longrightarrow> (\<exists>x. p x \<and> R x y'))" 
-  	by (smt (verit, best) F Fp is_filter.mono) 
+  hence 1: "F (\<lambda>y. \<forall>y'. R y y' \<longrightarrow> (\<exists>x. p x \<and> R x y'))"
+    by (rule is_filter.mono[OF F, rotated]) (meson R neper_trans)
   have "G (\<lambda>y. \<forall>y'. R y y' \<longrightarrow> (\<exists>x. p x \<and> R x y'))" using FG[unfolded rel_fun_def[of "rel_fun R (=)"] ff_def, 
      rule_format, of "\<lambda>y. \<exists>x. p x \<and> R x y" "\<lambda>y. \<exists>x. p x \<and> R x y"] 
   using 1 unfolding rel_fun_def by (metis R neper_def per_def)
-  hence 2: "G (\<lambda>y. \<exists>x. p x \<and> R x y)" 
-  by (smt (verit, best) G R rGG rrel_filter_upwards)
-  show "G q'" using 0 2 G by (smt (verit, best) Gq eventually_Abs_filter eventually_elim2)
+  hence 2: "G (\<lambda>y. \<exists>x. p x \<and> R x y)"
+    using G R rGG rrel_filter_upwards by fastforce
+  show "G q'" using 2 Gq
+    unfolding eventually_Abs_filter[OF G, symmetric, of q]
+              eventually_Abs_filter[OF G, symmetric, of q']
+              eventually_Abs_filter[OF G, symmetric, of "\<lambda>y. \<exists>x. p x \<and> R x y"]
+    by (rule eventually_elim2) (blast intro: 0[rule_format])
 qed
 
 (* *)
@@ -446,16 +458,18 @@ proof-
   show ?thesis unfolding fff_def 0
   unfolding is_filter_rlt_simp[OF R] apply auto
   unfolding eventually_def 
-	using R eventually_elim2
-	apply (smt (verit, del_insts) Rep_filter_iff_eventually)
-	by (smt (verit, best) "0" F R is_filter.mono mem_Collect_eq neper_classes_eq) 
+	using R
+	 apply (auto elim: eventually_elim2) []
+	apply (unfold 0[symmetric])
+	apply (erule is_filter.mono[OF F, rotated])
+	by (metis R neper_sym_eq neper_trans)
 qed
 
 lemma rel_fun_fff:
 assumes R: "neper R" and F: "is_filter F"
 shows "rel_fun (rel_fun R (=)) (=) (fff R F) (fff R F)"
-unfolding fff_def rel_fun_def 
-by auto (smt (verit, best) F R is_filter.mono mem_Collect_eq neper_classes_eq)+
+  unfolding fff_def rel_fun_def
+  by (auto elim!: is_filter.mono[OF F, rotated]) (metis R neper_sym_eq neper_trans)+
 
 lemma fff_surj_upto: 
 assumes R: "neper R" 
@@ -489,20 +503,23 @@ proof-
     show "rel_fun (rel_fun R (=)) (=) FF (fff R F)"
     unfolding rel_fun_def[of "rel_fun R (=)"] proof clarify
       fix P Q :: "'a \<Rightarrow> bool" assume PQ: "rel_fun R (=) P Q" 
-      hence PP: "rel_fun R (=) P P" and QQ: "rel_fun R (=) Q Q"  
-      	by (smt (verit, del_insts) R apply_rsp' neper_per per_def rel_funI)+
+      hence PP: "rel_fun R (=) P P" and QQ: "rel_fun R (=) Q Q"
+        by (metis R neper_eq neper_rel_fun neper_sym_eq neper_trans)+
       show "FF P = fff R F Q" unfolding fff_def F_def apply safe
         subgoal apply(rule exI[of _ "\<lambda>x. \<forall>y. R x y \<longrightarrow> Q y"], safe)
           subgoal using QQ unfolding rel_fun_def  
           	by (metis R mem_Collect_eq neper_classes_eq)
-          subgoal using PQ 
-          	by (smt (verit, del_insts) PP R 
-              \<open>FF P \<Longrightarrow> rel_fun R (=) (\<lambda>p'. \<forall>y. R p' y \<longrightarrow> Q y) (\<lambda>p'. \<forall>y. R p' y \<longrightarrow> Q y)\<close> 
-              assms(2) is_filter_rlt_simp rel_funD) .
-          subgoal for P'  
-          	by (smt (verit, ccfv_threshold) PP PQ R assms(2) is_filter_rlt_simp predicate1D rel_funD) 
-           . 
-    qed
+          subgoal
+            using is_filter_rlt_simp[OF R, THEN iffD1, OF assms(2),
+                THEN conjunct2, THEN conjunct2, rule_format, of P "(\<lambda>p'. \<forall>y. R p' y \<longrightarrow> Q y)"] PP PQ
+              \<open>FF P \<Longrightarrow> rel_fun R (=) (\<lambda>p'. \<forall>y. R p' y \<longrightarrow> Q y) (\<lambda>p'. \<forall>y. R p' y \<longrightarrow> Q y)\<close>
+              rel_funD[of "R" "(=)"]
+            by blast .
+        subgoal for P'
+          using is_filter_rlt_simp[OF R, THEN iffD1, OF assms(2),
+              THEN conjunct2, THEN conjunct2, rule_format, of P' P] PP PQ rel_funD2
+          by fastforce .
+      qed
   qed
 qed
 
@@ -598,7 +615,7 @@ lemma biject_rlt_getRepr: "neper R \<Longrightarrow> biject_rlt R (getRepr R)"
   by simp (metis getRepr_neper neper_def per_def)
 
 lemma rel_fun_getRepr: "neper R \<Longrightarrow> rel_fun R R (getRepr R) (getRepr R)"
-  by (smt (verit, best) getRepr_neper neper_per per_def rel_fun_def)
+  unfolding rel_fun_def by (metis geterRepr_related neper_sym neper_trans)
 
 lemma makeCompat_eq[simp]: "makeCompat (=) f = (if biject f then f else id)"
   unfolding makeCompat_def by simp
@@ -614,8 +631,9 @@ lemma rel_fun_makeCompat1_id:
 lemma rel_fun_makeCompat: 
   "neper R \<Longrightarrow> rel_fun R R f f \<Longrightarrow> 
   rel_fun R R (makeCompat R f) (makeCompat R f)"
-  unfolding makeCompat_def  
-  by (smt (z3) id_transfer rel_fun_def rel_fun_getRepr)
+  unfolding makeCompat_def
+  using rel_fun_getRepr[of R]
+  by (auto simp only: rel_fun_def simp_thms id_apply split: if_splits)
 
 context includes cardinal_syntax begin
 lemma card_eq_minus:
@@ -654,9 +672,9 @@ proof-
   define K11 where K11: "K11 \<equiv> \<lambda>a. {a'. R a a'} - {a}" 
   define K1 where K1: "K1 \<equiv> (\<Union> {K11 a | a. a \<in> A})"
   have 1: "UNIV = {a. \<not> R a a} \<union> A \<union> K1"
-  unfolding K1 K11
-  by auto (smt (verit, best) A DiffI R geterRepr_related mem_Collect_eq 
-     neper_getRepr_eq rel_funE rel_fun_getRepr singletonD)
+  unfolding K1 K11 using A
+  by auto
+    (metis (no_types, lifting) CollectI R getRepr_neper geterRepr_related insertE insert_Diff neper_getRepr_eq neper_trans)
 
   have 21: "f ` A \<subseteq> {a. R a a}"
   	using A f(2) rel_funE by fastforce
@@ -672,15 +690,28 @@ proof-
    	 using f0 by blast
    thus "\<exists>a\<in>A. R (f a) x"
      apply(intro bexI[of _ "getRepr R a'"])
-     apply (metis R f(2) geterRepr_related neper_per per_def rel_funE)
-    by (smt (verit) A CollectI R apply_rsp' getRepr_neper neper_getRepr_eq rel_fun_getRepr) 
+      apply (metis R f(2) geterRepr_related neper_per per_def rel_funE)
+     unfolding A mem_Collect_eq
+     by (metis R getRepr_inject getRepr_neper rel_funE rel_fun_getRepr)
   qed
   
   have 2: "UNIV = {a. \<not> R a a} \<union> f ` A \<union> (\<Union> {{a'. R a a' \<and> a' \<noteq> a} | a. a \<in> f ` A})"
   using 21 22 apply auto using imageI by blast
 
-  have "\<forall>a\<in>A. \<exists>aa\<in>A. R a (f aa)" unfolding A 
-  by simp (smt (verit, del_insts) R f(2) f0 geterRepr_related neper_getRepr_eq rel_fun_def rel_fun_getRepr)
+  have "\<forall>a\<in>A. \<exists>aa\<in>A. R a (f aa)" unfolding A Ball_def Bex_def mem_Collect_eq
+    apply safe
+    subgoal for x
+      apply (frule f0[THEN conjunct2, rule_format, of x])
+      apply (erule exE conjE)+
+      subgoal for y
+        apply (rule exI[of _ "getRepr R y"])
+        apply safe
+          apply (metis R rel_funD rel_fun_getRepr)
+         apply (meson R getRepr_neper neper_getRepr_eq)
+        apply (metis R f(2) getRepr_neper neper_sym_eq neper_trans rel_funE)
+        done
+      done
+    done
 
   then obtain hh where hh: "\<forall>a\<in>A. hh a \<in> A \<and> R a (f (hh a))"  
   	by metis
@@ -692,15 +723,32 @@ proof-
   define K2 where K2: "K2 \<equiv> (\<Union> {K22 a | a. a \<in> A})"
 
   have K2': "(\<Union> {{a'. R a a' \<and> a' \<noteq> a} | a. a \<in> f ` A}) = K2"
-  unfolding K2 K22 apply(rule arg_cong[of _ _ Union], safe)
+    unfolding K2 K22 apply(rule arg_cong[of _ _ Union], safe)
     subgoal for _ _ b
-    apply(rule exI[of _ "getRepr R (f b)"])
-    apply auto       
-      apply (metis R geterRepr_related mem_Collect_eq neper_classes_eq neper_getRepr_eq) 
-    	apply (smt (verit, best) A R f(2) f0 geterRepr_related hh mem_Collect_eq neper_getRepr_eq rel_funD2 rel_fun_getRepr)
-      apply (smt (verit, best) A R f(2) getRepr_neper mem_Collect_eq neper_classes_eq rel_fun_def)
-      apply (smt (verit, ccfv_SIG) A R f0 hh mem_Collect_eq neper_classes_eq neper_getRepr_eq rel_funE rel_fun_getRepr)
-      by (smt (verit) A R f(2) getRepr_neper mem_Collect_eq neper_getRepr_eq rel_funE rel_fun_getRepr)
+      apply(rule exI[of _ "getRepr R (f b)"])
+      using hh f(2) unfolding A mem_Collect_eq Ball_def rel_fun_def
+      apply -
+      apply (drule spec[of _ "getRepr R (f b)"])
+      apply auto
+                       apply (metis R rel_funE rel_fun_getRepr)
+                      apply (metis R rel_funE rel_fun_getRepr)
+                     apply (metis R rel_funE rel_fun_getRepr)
+                    apply (metis R rel_funE rel_fun_getRepr)
+                   apply (metis R rel_funE rel_fun_getRepr)
+                  apply (metis R getRepr_neper neper_getRepr_eq)
+                 apply (metis R getRepr_neper neper_getRepr_eq)
+                apply (metis R getRepr_neper neper_getRepr_eq)
+               apply (metis R getRepr_neper neper_getRepr_eq)
+              apply (metis R neper_getRepr_eq)
+             apply (metis R getRepr_neper neper_getRepr_eq)
+            apply (metis R getRepr_neper neper_getRepr_eq)
+           apply (metis R geterRepr_related neper_sym neper_trans)
+          apply (metis R f0 neper_getRepr_eq)
+         apply (metis R getRepr_neper neper_trans)
+        apply (metis R f0 neper_getRepr_eq neper_sym neper_trans)
+       apply (metis R neper_sym neper_trans)
+      apply (metis R getRepr_neper neper_getRepr_eq)
+      done
     subgoal for _ a apply(rule exI[of _ "f (hh a)"])
     using R hh neper_classes_eq by fastforce+ .
 
@@ -745,12 +793,9 @@ proof-
       using uu[of "getRepr R x"] uuxy xA xy unfolding bij_betw_def inj_on_def by auto
     next
       case False
-      hence False using uuxy  xy
-      unfolding K11 K22 
-      by (smt (verit, del_insts) A Diff_iff K22 R 
-          uu'[of "getRepr R x"] 
-          uu'[of "getRepr R y"] 
-       getRepr_neper image_eqI mem_Collect_eq neper_classes_eq neper_getRepr_eq xy(1) xy(2))
+      hence False using uuxy xy R uu'[of "getRepr R x"] uu'[of "getRepr R y"]
+        unfolding K11 K22 A mem_Collect_eq
+        by (metis (no_types, opaque_lifting) Diff_iff image_eqI mem_Collect_eq neper_classes_eq neper_getRepr_eq neper_sym)
       thus ?thesis by simp
     qed
   next
@@ -790,16 +835,37 @@ proof-
   	by auto (metis (mono_tags, lifting) A R f0 mem_Collect_eq neper_getRepr_eq) .
 
   have gf_getRepr: "\<And>x. R x x \<Longrightarrow> g (getRepr R x) = f (getRepr R x)"
-   by (smt (verit, del_insts) A CollectI R g_def getRepr_neper neper_getRepr_eq rel_funE rel_fun_getRepr)
-  
+    using A R g_def getRepr_inject getRepr_neper rel_funD rel_fun_getRepr by fastforce
+
   show ?thesis apply(rule exI[of _ g])
     using g unfolding bij_betw_def biject_def apply auto 
     apply (meson inj_eq)  
     apply (metis surjD) 
     using gf_getRepr apply blast
     using R apply simp apply safe  
-    apply (metis (full_types) biject_rlt_getRepr biject_rlt_simp f(1) gf_getRepr rel_funE rel_fun_getRepr)
-    by (smt (verit, ccfv_threshold) A \<open>\<forall>a\<in>A. \<exists>aa\<in>A. R a (f aa)\<close> g_def geterRepr_related mem_Collect_eq neper_classes_eq neper_getRepr_eq)
+     apply (metis (full_types) biject_rlt_getRepr biject_rlt_simp f(1) gf_getRepr rel_funE rel_fun_getRepr)
+  proof -
+    fix x :: 'a
+    assume a1: "neper R"
+    assume a2: "R x x"
+    have f3: "per R"
+      using a1 neper_per by blast
+    have f4: "R x (getRepr R x)"
+      using a2 a1 by (simp add: getRepr_neper)
+    then have f5: "getRepr R (getRepr R x) = getRepr R x"
+      using a1 by (metis (no_types) neper_getRepr_eq)
+    have f6: "R (getRepr R x) x"
+      using f4 f3 by (meson per_def)
+    have f7: "\<And>a. \<not> R a x \<or> R a (getRepr R x)"
+      using f4 f3 by (metis (no_types) per_def)
+    obtain aa :: "'a \<Rightarrow> 'a" where
+      f8: "\<And>a. (a \<notin> A \<or> aa a \<in> A) \<and> (a \<notin> A \<or> R a (f (aa a)))"
+      using \<open>\<forall>a\<in>A. \<exists>aa\<in>A. R a (f aa)\<close> by moura
+    then have "getRepr R x \<notin> A \<or> R (f (aa (getRepr R x))) x"
+      using f6 f3 by (metis (no_types) per_def)
+    then show "\<exists>a. R a a \<and> R (g (getRepr R a)) x"
+      using f8 f7 f6 f5 A by fastforce
+  qed
 qed
 
 end
